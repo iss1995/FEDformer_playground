@@ -63,6 +63,15 @@ class FixedEmbedding(nn.Module):
 class TemporalEmbedding(nn.Module):
     def __init__(self, d_model, embed_type='fixed', freq='h'):
         super(TemporalEmbedding, self).__init__()
+        """
+        This layer is designed to encode calendar-based information from the timestamp.
+        Purpose: TemporalEmbedding encodes the absolute time information, like "is this data point from a Monday?" or "did this occur in January?". This is crucial for time series data where seasonality and weekly/daily patterns are important.
+        How it works: It assumes you have extracted categorical features from your timestamps (month, day, day of the week, hour, etc.). It creates a separate embedding layer for each of these time features (month_embed, day_embed, etc.).
+        Based on the embed_type parameter, these layers can be either:
+        1. 'fixed': Uses FixedEmbedding, which works just like the PositionalEmbedding (non-learnable sinusoids) to create fixed representations for each category (e.g., a vector for "January", another for "February").
+        2. Otherwise: It uses a standard nn.Embedding, which is a learnable lookup table. The model will learn the best vector representation for "January" during training.
+        3. Finally, it sums the embeddings from all the time features (hour_x + weekday_x + day_x + ...) to get a single temporal embedding vector for that time step.
+        """
 
         minute_size = 4
         hour_size = 24
@@ -93,7 +102,10 @@ class TemporalEmbedding(nn.Module):
 class TimeFeatureEmbedding(nn.Module):
     def __init__(self, d_model, embed_type='timeF', freq='h'):
         super(TimeFeatureEmbedding, self).__init__()
-
+        """
+        Purpose: This is used when your time features are already processed into a set of continuous numerical values instead of categorical indices.
+        How it works: It just uses a single learnable nn.Linear layer to project these numerical time features into the model's dimension (d_model). The freq_map dictionary at the beginning defines how many input time features to expect for a given data frequency (e.g., 'h' for hourly data expects 4 features).
+        """
         freq_map = {'h': 4, 't': 5, 's': 6, 'm': 1, 'a': 1, 'w': 2, 'd': 3, 'b': 3}
         d_inp = freq_map[freq]
         self.embed = nn.Linear(d_inp, d_model, bias=False)

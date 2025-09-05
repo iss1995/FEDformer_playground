@@ -38,6 +38,7 @@ class FourierBlock(nn.Module):
         print('modes={}, index={}'.format(modes, self.index))
 
         self.scale = (1 / (in_channels * out_channels))
+        # 8 refers to the number of heads, H is the same number
         self.weights1 = nn.Parameter(
             self.scale * torch.rand(8, in_channels // 8, out_channels // 8, len(self.index), dtype=torch.cfloat))
 
@@ -47,7 +48,7 @@ class FourierBlock(nn.Module):
         return torch.einsum("bhi,hio->bho", input, weights)
 
     def forward(self, q, k, v, mask):
-        # size = [B, L, H, E]
+        # size = [B, L, H, E] -> Should not work if H is not the same as the number of heads
         B, L, H, E = q.shape
         x = q.permute(0, 2, 3, 1)
         # Compute Fourier coefficients
@@ -73,7 +74,8 @@ class FourierCrossAttention(nn.Module):
         self.activation = activation
         self.in_channels = in_channels
         self.out_channels = out_channels
-        # get modes for queries and keys (& values) on frequency domain
+        # get modes for queries and keys (& values) on frequency domain 
+        # Different frequency modes are used for queries and keys (& values)
         self.index_q = get_frequency_modes(seq_len_q, modes=modes, mode_select_method=mode_select_method)
         self.index_kv = get_frequency_modes(seq_len_kv, modes=modes, mode_select_method=mode_select_method)
 
